@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Antipode Airlines</title>
+  <script src="https://d3js.org/d3.v7.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/d3-geo-projection@4"></script>
+  <script src="https://cdn.jsdelivr.net/npm/topojson-client@3"></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background-color: #0b131e;
+      color: #9fb3c8;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+    header {
+      background: #0f1a24;
+      border-bottom: 1px solid #1e2d3d;
+      padding: 0 16px;
+      height: 48px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-shrink: 0;
+    }
+    .brand { display: flex; align-items: center; gap: 8px; color: #e2e8f0; font-size: 0.9rem; font-weight: 500; }
+    .brand-logo { color: #00bcd4; font-weight: 700; font-size: 1.1rem; display: flex; align-items: center; gap: 6px; }
+    .container { display: flex; flex: 1; height: calc(100vh - 48px); width: 100vw; }
+    .sidebar {
+      width: 40%;
+      min-width: 320px;
+      background: #0b131e;
+      border-right: 1px solid #1e2d3d;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      overflow-y: auto;
+    }
+    .card {
+      background: #132232;
+      border: 1px solid #1e2d3d;
+      border-radius: 6px;
+      padding: 14px;
+    }
+    .card h2 { color: #e2e8f0; font-size: 0.85rem; font-weight: 600; margin-bottom: 10px; }
+    .input-group { display: flex; flex-direction: column; gap: 8px; }
+    .input-group label { font-size: 0.75rem; color: #64748b; }
+    .search-row { display: flex; gap: 8px; }
+    input[type="text"] {
+      background: #090f17;
+      border: 1px solid #1e2d3d;
+      color: #fff;
+      padding: 8px 12px;
+      border-radius: 4px;
+      font-size: 0.85rem;
+      outline: none;
+    }
+    .code-input { flex: 1; text-transform: uppercase; font-weight: 700; text-align: center; }
+    .btn-compute {
+      background: #f57c00;
+      color: #fff;
+      border: none;
+      padding: 8px 16px;
+      border-radius: 4px;
+      font-weight: 600;
+      font-size: 0.85rem;
+      cursor: pointer;
+      flex: 1;
+    }
+    .btn-compute:hover { background: #ff9800; }
+    .status { font-size: 0.75rem; color: #64748b; margin-top: 4px; }
+    .metrics-list { display: flex; flex-direction: column; gap: 6px; font-size: 0.8rem; }
+    .metrics-list div { color: #94a3b8; }
+    .metrics-list strong { color: #e2e8f0; }
+    .itinerary { flex: 1; }
+    .leg-card {
+      font-size: 0.8rem;
+      border-left: 3px solid #00bcd4;
+      padding-left: 8px;
+      margin-top: 6px;
+      color: #cbd5e1;
+    }
+    .map-view { flex: 1; width: 60%; position: relative; background: #070d14; }
+    #map-svg { width: 100%; height: 100%; }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="brand">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="#fff"><path d="M22 16v-2l-8.5-5V3.5c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5V9L2 14v2l8.5-2.5V19L8 20.5V22l4-1 4 1v-1.5L13.5 19v-5.5L22 16Z"/></svg>
+      Antipode Airlines
+    </div>
+    <div class="brand-logo">
+      Antipode Airlines
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="#00bcd4"><path d="M22 16v-2l-8.5-5V3.5c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5V9L2 14v2l8.5-2.5V19L8 20.5V22l4-1 4 1v-1.5L13.5 19v-5.5L22 16Z"/></svg>
+    </div>
+  </header>
+  <main class="container">
+    <aside class="sidebar">
+      <div class="card">
+        <h2>Search Panel</h2>
+        <div class="input-group">
+          <label>Origin Airport (IATA/ICAO):</label>
+          <div class="search-row">
+            <input type="text" id="origin-input" value="SYD" class="code-input" maxlength="4">
+            <button id="compute-btn" class="btn-compute">Compute Route</button>
+          </div>
+          <div id="status" class="status">System Status: Ready. Enter Origin.</div>
+        </div>
+      </div>
+      <div class="card">
+        <h2>Flight Metrics</h2>
+        <div class="metrics-list">
+          <div>Origin: <strong id="m-origin">-</strong></div>
+          <div>Target Antipode: <strong id="m-target">-</strong></div>
+          <div>Computed Destination: <strong id="m-dest">-</strong></div>
+          <div>Total Route Legs: <strong id="m-legs">-</strong></div>
+        </div>
+      </div>
+      <div class="card itinerary">
+        <h2>Itinerary</h2>
+        <div id="itinerary-list">Enter an origin airport to compute path.</div>
+      </div>
+    </aside>
+    <section class="map-view">
+      <svg id="map-svg"></svg>
+    </section>
+  </main>
+  <script>
+    class FlightEngine {
+      constructor() {
+        this.airports = new Map();
+        this.codeAlias = new Map();
+        this.adjList = new Map();
+        this.airportList = [];
+      }
+      async init(statusCb) {
+        statusCb("Fetching airports.dat...");
+        const aRes = await fetch('airports.dat');
+        if (!aRes.ok) throw new Error("Could not load airports.dat");
+        this.parseAirports(await aRes.text());
+        statusCb("Fetching routes.dat...");
+        const rRes = await fetch('routes.dat');
+        if (!rRes.ok) throw new Error("Could not load routes.dat");
+        this.parseRoutes(await rRes.text());
+        statusCb("System Status: Ready. Enter Origin.");
+      }
+      parseCSVLine(text) {
+        const regex = /(?:,|\n|^)("(?:(?:"")*[^"]*)*"|[^",\n]*|(?:\n|$))/g;
+        const matches = [];
+        let match;
+        while ((match = regex.exec(text)) !== null) {
+          if (match[0].length === 0 && match.index === regex.lastIndex) { regex.lastIndex++; break; }
+          let val = match[1] || '';
+          if (val.startsWith('"') && val.endsWith('"')) val = val.slice(1, -1).replace(/""/g, '"');
+          matches.push(val.trim());
+        }
+        return matches;
+      }
+      parseAirports(csv) {
+        for (const line of csv.split('\n')) {
+          if (!line) continue;
+          const cols = this.parseCSVLine(line);
+          if (cols.length < 8) continue;
+          const iata = cols[4], icao = cols[5];
+          const code = (iata && iata !== '\\N') ? iata : ((icao && icao !== '\\N') ? icao : null);
+          if (!code) continue;
+          const lat = parseFloat(cols[6]), lon = parseFloat(cols[7]);
+          if (isNaN(lat) || isNaN(lon)) continue;
+          const rLat = lat * Math.PI / 180, rLon = lon * Math.PI / 180;
+          const ap = { code, name: cols[1], city: cols[2], country: cols[3], lat, lon, x: Math.cos(rLat)*Math.cos(rLon), y: Math.cos(rLat)*Math.sin(rLon), z: Math.sin(rLat) };
+          this.airports.set(code, ap);
+          this.airportList.push(ap);
+          if (iata && iata !== '\\N') this.codeAlias.set(iata.toUpperCase(), code);
+          if (icao && icao !== '\\N') this.codeAlias.set(icao.toUpperCase(), code);
+        }
+      }
+      parseRoutes(csv) {
+        for (const line of csv.split('\n')) {
+          if (!line) continue;
+          const cols = this.parseCSVLine(line);
+          if (cols.length < 5) continue;
+          const src = this.codeAlias.get(cols[2].toUpperCase());
+          const dst = this.codeAlias.get(cols[4].toUpperCase());
+          if (src && dst) {
+            if (!this.adjList.has(src)) this.adjList.set(src, new Set());
+            this.adjList.get(src).add(dst);
+          }
+        }
+      }
+      getRankedAntipodes(originCode, count = 20) {
+        const origin = this.airports.get(originCode);
+        const antiLat = -origin.lat;
+        const antiLon = ((origin.lon + 180 + 180) % 360) - 180;
+        const rLat = antiLat * Math.PI / 180, rLon = antiLon * Math.PI / 180;
+        const tx = Math.cos(rLat)*Math.cos(rLon), ty = Math.cos(rLat)*Math.sin(rLon), tz = Math.sin(rLat);
+        return this.airportList.map(ap => {
+          const dx = ap.x - tx, dy = ap.y - ty, dz = ap.z - tz;
+          return { airport: ap, dist: dx*dx + dy*dy + dz*dz };
+        }).sort((a, b) => a.dist - b.dist).slice(0, count).map(i => i.airport);
+      }
+      findShortestRoute(start, target) {
+        const queue = [start], parent = new Map();
+        parent.set(start, null);
+        while (queue.length > 0) {
+          const curr = queue.shift();
+          if (curr === target) break;
+          for (const n of (this.adjList.get(curr) || [])) {
+            if (!parent.has(n)) { parent.set(n, curr); queue.push(n); }
+          }
+        }
+        if (!parent.has(target)) return [];
+        const path = [];
+        let c = target;
+        while (c !== null) { path.push(c); c = parent.get(c); }
+        return path.reverse();
+      }
+    }
+
+    class MapRenderer {
+      constructor(svgId) {
+        this.svg = d3.select(`#${svgId}`);
+        this.gLand = this.svg.append('g');
+        this.gGraticule = this.svg.append('g');
+        this.gRoutes = this.svg.append('g');
+        this.gMarkers = this.svg.append('g');
+        this.worldGeo = null;
+        this.lastData = null;
+        window.addEventListener('resize', () => this.render());
+        this.fetchLand();
+      }
+      async fetchLand() {
+        try {
+          const res = await fetch('https://cdn.jsdelivr.net/npm/world-atlas@2/land-110m.json');
+          if (res.ok) {
+            const topo = await res.json();
+            this.worldGeo = topojson.feature(topo, topo.objects.land);
+            this.render();
+          }
+        } catch (e) { console.warn(e); }
+      }
+      draw(path, origin, target, antipode) {
+        this.lastData = { path, origin, target, antipode };
+        this.render();
+      }
+      render() {
+        const width = this.svg.node().clientWidth || 800;
+        const height = this.svg.node().clientHeight || 500;
+        const projection = d3.geoRobinson().fitExtent([[20, 20], [width - 20, height - 20]], { type: "Sphere" });
+        const pathGen = d3.geoPath().projection(projection);
+
+        this.gLand.selectAll('*').remove();
+        this.gGraticule.selectAll('*').remove();
+        this.gRoutes.selectAll('*').remove();
+        this.gMarkers.selectAll('*').remove();
+
+        this.gLand.append('path').datum({ type: "Sphere" }).attr('d', pathGen).attr('fill', '#09131d').attr('stroke', '#1e2d3d');
+        this.gGraticule.append('path').datum(d3.geoGraticule10()).attr('d', pathGen).attr('fill', 'none').attr('stroke', '#132232').attr('stroke-width', 0.8);
+
+        if (this.worldGeo) {
+          this.gLand.append('path').datum(this.worldGeo).attr('d', pathGen).attr('fill', '#182b3c').attr('stroke', '#253f58').attr('stroke-width', 0.5);
+        }
+
+        if (!this.lastData) return;
+        const { path, origin, target, antipode } = this.lastData;
+
+        if (antipode) {
+          const aPos = projection([antipode.lon, antipode.lat]);
+          if (aPos) {
+            this.gMarkers.append('circle').attr('cx', aPos[0]).attr('cy', aPos[1]).attr('r', 5).attr('fill', 'none').attr('stroke', '#f57c00').attr('stroke-dasharray', '2,2').attr('stroke-width', 1.5);
+            this.gMarkers.append('text').attr('x', aPos[0]).attr('y', aPos[1] + 14).attr('text-anchor', 'middle').attr('fill', '#f57c00').attr('font-size', '10px').text('Exact Antipode Target');
+          }
+        }
+
+        for (let i = 0; i < path.length - 1; i++) {
+          const geoLine = { type: "Feature", geometry: { type: "LineString", coordinates: [[path[i].lon, path[i].lat], [path[i+1].lon, path[i+1].lat]] } };
+          this.gRoutes.append('path').datum(geoLine).attr('d', pathGen).attr('fill', 'none').attr('stroke', '#00bcd4').attr('stroke-width', 2);
+        }
+
+        path.forEach((ap, i) => {
+          const pos = projection([ap.lon, ap.lat]);
+          if (!pos) return;
+          const isStart = i === 0, isEnd = i === path.length - 1;
+          const color = isStart ? '#f57c00' : '#00bcd4';
+          this.gMarkers.append('circle').attr('cx', pos[0]).attr('cy', pos[1]).attr('r', 5).attr('fill', color);
+          this.gMarkers.append('text').attr('x', pos[0]).attr('y', pos[1] + (isStart ? 14 : -8)).attr('text-anchor', 'middle').attr('fill', color).attr('font-size', '11px').attr('font-weight', '600').text(`${ap.name} (${ap.code})`);
+        });
+      }
+    }
+
+    const engine = new FlightEngine();
+    const mapRenderer = new MapRenderer('map-svg');
+
+    engine.init(msg => document.getElementById('status').textContent = msg).catch(e => {
+      document.getElementById('status').textContent = e.message;
+    });
+
+    document.getElementById('compute-btn').addEventListener('click', () => {
+      const input = document.getElementById('origin-input').value.trim().toUpperCase();
+      const code = engine.codeAlias.get(input);
+      if (!code) {
+        document.getElementById('status').textContent = `Airport '${input}' not found.`;
+        return;
+      }
+      const candidates = engine.getRankedAntipodes(code, 20);
+      let path = [], target = null;
+      for (const c of candidates) {
+        const res = engine.findShortestRoute(code, c.code);
+        if (res.length > 0) { path = res; target = c; break; }
+      }
+      if (path.length === 0) {
+        document.getElementById('status').textContent = "No flight route found to antipodal region.";
+        return;
+      }
+      const origin = engine.airports.get(code);
+      const fullPath = path.map(c => engine.airports.get(c));
+      const antiLat = -origin.lat, antiLon = ((origin.lon + 180 + 180) % 360) - 180;
+
+      document.getElementById('status').textContent = "Route computed successfully.";
+      document.getElementById('m-origin').textContent = `${origin.code} (${origin.city})`;
+      document.getElementById('m-target').textContent = `Lat ${antiLat.toFixed(2)}, Lon ${antiLon.toFixed(2)}`;
+      document.getElementById('m-dest').textContent = `${target.code} (${target.city})`;
+      document.getElementById('m-legs').textContent = path.length - 1;
+
+      const list = document.getElementById('itinerary-list');
+      list.innerHTML = '';
+      for (let i = 0; i < fullPath.length - 1; i++) {
+        const div = document.createElement('div');
+        div.className = 'leg-card';
+        div.innerHTML = `Leg ${i+1}: <strong>${fullPath[i].code}</strong> (${fullPath[i].city}) → <strong>${fullPath[i+1].code}</strong> (${fullPath[i+1].city})`;
+        list.appendChild(div);
+      }
+
+      mapRenderer.draw(fullPath, origin, target, { lat: antiLat, lon: antiLon });
+    });
+  </script>
+</body>
+</html>

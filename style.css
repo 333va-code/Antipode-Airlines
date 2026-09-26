@@ -1,0 +1,236 @@
+/* Core Color Palette & Typography */
+:root {
+    --bg-dark-color: #0c141e;      /* Very dark navy */
+    --panel-bg-color: #172a3a;     /* Dark slate blue */
+    --header-bg-color: #101e2b;    /* Slightly lighter dark navy */
+    --accent-color: #00bcd4;       /* Main cyan */
+    --orange-color: #f57c00;       /* Origin/Button orange */
+    --text-color: #b0bec5;         /* Light grey text */
+    --heading-color: #ffffff;      /* White headings */
+    --input-bg-color: #080d12;     /* Darker grey input */
+    --border-color: #263238;       /* Medium grey border */
+}
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    background-color: var(--bg-dark-color);
+    color: var(--text-color);
+    font-family: 'Roboto', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    font-size: 14px;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+}
+
+/* Header */
+header {
+    background-color: var(--header-bg-color);
+    border-bottom: 1px solid var(--border-color);
+    padding: 10px 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    height: 50px;
+    flex-shrink: 0;
+}
+
+.logo, .main-logo {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.brand-text {
+    color: var(--heading-color);
+    font-weight: 500;
+}
+
+.header-tools {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
+.user-avatar img {
+    border-radius: 50%;
+}
+
+.logo-main {
+    color: var(--heading-color);
+    font-weight: 700;
+    font-size: 16px;
+}
+
+/* Main Container Layout */
+.container {
+    display: flex;
+    flex: 1;
+    overflow: hidden; /* Prevent body scroll */
+}
+
+/* Sidebar (Left 2/5) */
+.sidebar {
+    width: 40%;
+    max-width: 500px; /* Optional constraint */
+    min-width: 320px;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    border-right: 1px solid var(--border-color);
+    overflow-y: auto; /* Scrollable sidebar if content overflows */
+}
+
+.panel-card {
+    background-color: var(--panel-bg-color);
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    padding: 15px;
+    position: relative;
+}
+
+.panel-card h2 {
+    color: var(--heading-color);
+    font-size: 16px;
+    margin-bottom: 12px;
+    font-weight: 500;
+}
+
+.panel-content {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+/* Specific Sidebar Components */
+.search-panel label {
+    font-size: 12px;
+    color: #78909c; /* Lighter grey label */
+}
+
+#search-input, .input-code {
+    background-color: var(--input-bg-color);
+    border: 1px solid #455a64; /* Brighter border on inputs */
+    color: var(--heading-color);
+    padding: 8px 12px;
+    border-radius: 4px;
+    width: 100%;
+    outline: none;
+}
+
+#search-input::placeholder {
+    color: #455a64;
+}
+
+.search-action {
+    display: flex;
+    gap: 10px;
+    margin-top: 5px;
+}
+
+.input-code {
+    width: 70px;
+    text-transform: uppercase;
+    text-align: center;
+    font-size: 16px;
+    font-weight: bold;
+}
+
+#compute-btn {
+    background-color: var(--orange-color);
+    color: white;
+    border: none;
+    border-radius: 4px;
+    padding: 8px 20px;
+    font-weight: bold;
+    cursor: pointer;
+    flex: 1;
+    transition: background-color 0.2s;
+}
+
+#compute-btn:hover {
+    background-color: #ff9800; /* Lighter orange on hover */
+}
+
+.status {
+    font-size: 12px;
+    margin-top: 5px;
+}
+
+.metrics-panel strong {
+    color: var(--heading-color);
+}
+
+.itinerary-panel {
+    flex: 1; /* Stretch to fill available vertical space */
+    display: flex;
+    flex-direction: column;
+}
+
+#itinerary-content {
+    flex: 1;
+    overflow-y: auto;
+    font-size: 13px;
+}
+
+.itinerary-leg {
+    margin-bottom: 10px;
+    border-left: 2px solid var(--border-color);
+    padding-left: 8px;
+}
+
+.itinerary-origin { color: var(--orange-color); }
+.itinerary-dest { color: var(--accent-color); }
+
+/* Map View (Right 3/5) */
+.map-view {
+    flex: 1;
+    width: 60%;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+}
+
+#map {
+    width: 100%;
+    flex: 1;
+    z-index: 1;
+}
+
+/* Leaflet Overrides for Dark Theme */
+.leaflet-container {
+    background-color: #000; /* Fallback */
+}
+
+.leaflet-tile-pane {
+    filter: invert(100%) hue-rotate(180deg) brightness(95%) contrast(90%);
+    opacity: 0.85;
+}
+
+.leaflet-control-zoom-in, .leaflet-control-zoom-out {
+    background-color: var(--panel-bg-color) !important;
+    color: var(--accent-color) !important;
+    border-color: var(--border-color) !important;
+}
+
+/* Map Controls Overlay */
+.map-controls {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    z-index: 10;
+}
+
+#projection-select {
+    background-color: rgba(23, 42, 58, 0.8); /* Semi-transparent panel bg */
+    border: 1px solid var(--border-color);
+    color: var(--text-color);
+    padding: 5px 10px;
+    border-radius: 4px;
+    cursor: pointer;
+}
